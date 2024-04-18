@@ -1,0 +1,2 @@
+
+pyinstaller syms.py --onefile

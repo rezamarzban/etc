@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Octave Shell</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .cell {
+            border: 1px solid #ddd;
+            margin: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            font-family: monospace;
+            font-size: 16px;
+            white-space: pre-wrap;
+        }
+
+        .input-cell {
+            border-bottom: none;
+        }
+
+        .output-cell {
+            border-top: none;
+        }
+
+        .output {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        #command {
+            border: 1px solid #ddd;
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+            outline: none;
+            width: calc(100% - 20px);
+            resize: none; /* Prevent resizing by user */
+            overflow-y: hidden; /* Hide scrollbar */
+        }
+
+        #status {
+            margin: 10px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: red;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div id="cells"></div>
+    <textarea id="command" placeholder="Enter Octave command"></textarea>
+    <div id="status"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+        var cellsContainer = document.getElementById('cells');
+        var commandInput = document.getElementById('command');
+        var statusIndicator = document.getElementById('status');
+
+        socket.on('connect', function() {
+            statusIndicator.style.backgroundColor = 'green'; // Connected
+        });
+
+        socket.on('disconnect', function() {
+            statusIndicator.style.backgroundColor = 'red'; // Disconnected
+        });
+
+        socket.on('output', function(output) {
+            var outputCell = document.createElement('div');
+            outputCell.classList.add('cell', 'output-cell');
+            outputCell.innerHTML = '<div class="output">' + output + '</div>';
+            cellsContainer.appendChild(outputCell);
+            commandInput.style.height = ''; // Reset height
+            commandInput.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+
+        commandInput.addEventListener('input', function() {
+            this.style.height = ''; // Reset height
+            this.style.height = this.scrollHeight + 'px'; // Adjust height based on content
+        });
+
+        commandInput.addEventListener('keyup', function(event) {
+            if (event.keyCode === 13) {  // Enter key pressed
+                var command = commandInput.value.trim();
+                if (command !== '') {
+                    var inputCell = document.createElement('div');
+                    inputCell.classList.add('cell', 'input-cell');
+                    inputCell.innerHTML = '<div>&gt; ' + command + '</div>';
+                    cellsContainer.appendChild(inputCell);
+                    socket.emit('command', command);
+                    commandInput.value = '';
+                    commandInput.style.height = ''; // Reset height
+                    commandInput.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+            }
+        });
+
+        commandInput.focus();
+    </script>
+</body>
+</html>

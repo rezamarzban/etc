@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>Syms Web Ver3.0</title>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    showProcessingMessages: false,
+    tex2jax: { inlineMath: [['$','$'],['\\(','\\)']] }
+  });
+</script>
+<script type="text/javascript" src="/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+<script>
+var Preview = {
+  delay: 150,        // delay after keystroke before updating
+
+  preview: null,     // filled in by Init below
+  buffer: null,      // filled in by Init below
+
+  timeout: null,     // store setTimout id
+  mjRunning: false,  // true when MathJax is processing
+  oldText: null,     // used to check if an update is needed
+
+  //
+  //  Get the preview and buffer DIV's
+  //
+  Init: function () {
+    this.preview = document.getElementById("MathPreview");
+    this.buffer = document.getElementById("MathBuffer");
+  },
+
+  //
+  //  Switch the buffer and preview, and display the right one.
+  //  (We use visibility:hidden rather than display:none since
+  //  the results of running MathJax are more accurate that way.)
+  //
+  SwapBuffers: function () {
+    var buffer = this.preview, preview = this.buffer;
+    this.buffer = buffer; this.preview = preview;
+    buffer.style.visibility = "hidden"; buffer.style.position = "absolute";
+    preview.style.position = ""; preview.style.visibility = "";
+  },
+
+  //
+  //  This gets called when a key is pressed in the textarea.
+  //  We check if there is already a pending update and clear it if so.
+  //  Then set up an update to occur after a small delay (so if more keys
+  //    are pressed, the update won't occur until after there has been 
+  //    a pause in the typing).
+  //  The callback function is set up below, after the Preview object is set up.
+  //
+  Update: function () {
+    if (this.timeout) {clearTimeout(this.timeout)}
+    this.timeout = setTimeout(this.callback,this.delay);
+  },
+
+  //
+  //  Creates the preview and runs MathJax on it.
+  //  If MathJax is already trying to render the code, return
+  //  If the text hasn't changed, return
+  //  Otherwise, indicate that MathJax is running, and start the
+  //    typesetting.  After it is done, call PreviewDone.
+  //  
+  CreatePreview: function () {
+    Preview.timeout = null;
+    if (this.mjRunning) return;
+    var text = document.getElementById("outputCell").value;
+    if (text === this.oldtext) return;
+    this.buffer.innerHTML = this.oldtext = text;
+    this.mjRunning = true;
+    MathJax.Hub.Queue(
+      ["Typeset",MathJax.Hub,this.buffer],
+      ["PreviewDone",this]
+    );
+  },
+
+  //
+  //  Indicate that MathJax is no longer running,
+  //  and swap the buffers to show the results.
+  //
+  PreviewDone: function () {
+    this.mjRunning = false;
+    this.SwapBuffers();
+  }
+
+};
+
+//
+//  Cache a callback to the CreatePreview action
+//
+Preview.callback = MathJax.Callback(["CreatePreview",Preview]);
+Preview.callback.autoReset = true;  // make sure it can run more than once
+
+</script>
+</head>
+<body>
+
+Code History:<br />
+    <textarea id="codeHistory" rows="10" cols="40" readonly></textarea><br>
+Enter your code here:<br />
+    <textarea id="code" rows="5" cols="40"></textarea><br>
+    <button onclick="executeCode();Preview.Update()">Run</button><br><br>
+System Output:<br />
+    <textarea id="outputCell" rows="10" cols="40" readonly></textarea><br>
+
+<footer>
+	<small>Syms Web V3 - Created by <a href="https://www.github.com/rezamarzban/syms-web">Reza Marzban</a>. © 2024</small>
+</footer>
+
+    <script>
+        var codeHistory = []; // Array to store code inputs
+
+        function executeCode() {
+            var code = document.getElementById("code").value;
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    // Get the output
+                    var output = xhr.responseText;
+
+                    // Append the current code to the code history
+                    codeHistory.push(code);
+
+                    // Generate the text to display the code and output
+                    var codeOutput =  output;
+                    var historyOutput = "";
+                    for (var i = 0; i < codeHistory.length; i++) {
+                        historyOutput += "--- Run " + (i + 1) + " --- :\n" + codeHistory[i] + "\n\n";
+                    }
+
+                    // Update the content of the output textarea
+                    document.getElementById("outputCell").value = codeOutput;
+                    document.getElementById("codeHistory").value = historyOutput;
+
+                    // Resize the textarea height based on its content
+                    resizeTextarea("outputCell");
+                    resizeTextarea("codeHistory");
+
+                    // Clear the code textarea
+                    document.getElementById("code").value = "";
+
+                    // Focus on the code textarea for the next input
+                    document.getElementById("code").focus();
+                }
+            };
+            xhr.send("code=" + encodeURIComponent(code));
+        }
+
+        // Function to resize textarea height based on content
+        function resizeTextarea(id) {
+            var textarea = document.getElementById(id);
+            textarea.style.height = "auto"; // Reset height to auto
+            textarea.style.height = textarea.scrollHeight + "px"; // Set new height
+        }
+    </script>
+
+<br/><br/>
+MathJax rendering zone:
+<div id="MathPreview" style="border:1px solid; padding: 3px; width:50%; margin-top:5px"></div>
+<div id="MathBuffer" style="border:1px solid; padding: 3px; width:50%; margin-top:5px; 
+visibility:hidden; position:absolute; top:0; left: 0"><div>
+
+<script>
+Preview.Init();
+</script>
+
+</body>
+</html>
